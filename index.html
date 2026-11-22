@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f2a55">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tabungan HP">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Tabungan HP</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<section id="auth">
+  <h1>Tabungan HP</h1>
+  <p class="s">Catat penghasilan, pantau target HP Rp3.700.000.</p>
+  <div class="card">
+    <label for="a-name">Nama (hanya saat daftar)</label><input id="a-name" placeholder="Nama kamu">
+    <label for="a-email">Email</label><input id="a-email" type="email" autocomplete="email">
+    <label for="a-password">Kata sandi (min. 6 karakter)</label><input id="a-password" type="password" autocomplete="current-password">
+    <button class="btn" id="btn-login">Masuk</button>
+    <button class="btn ghost" id="btn-register">Buat akun baru</button>
+    <div id="auth-msg"></div>
+  </div>
+</section>
+
+<!-- ============ APLIKASI ============ -->
+<div id="app" class="hidden">
+<header class="top"><small id="hello">Halo</small><h1 id="page-title">Beranda</h1></header>
+<main>
+
+<!-- BERANDA -->
+<section class="view active" id="view-dashboard">
+  <div class="card hero">
+    <small>Tabungan HP terkumpul</small>
+    <div class="big" id="s-saved">Rp0</div>
+    <div class="bar"><i id="bar"></i></div>
+    <small><span id="s-pct">0%</span> dari <span id="s-target">Rp3.700.000</span> · sisa <b id="s-remain">Rp0</b></small>
+  </div>
+  <div class="grid">
+    <div class="stat"><small>Komisi IndiHome</small><b id="s-indihome">Rp0</b></div>
+    <div class="stat"><small>Pendapatan ShopeeFood (kotor)</small><b id="s-shopee">Rp0</b></div>
+    <div class="stat r"><small>Total pengeluaran</small><b id="s-expense">Rp0</b></div>
+    <div class="stat g"><small>Saldo operasional</small><b id="s-net">Rp0</b></div>
+    <div class="stat"><small>Total pemasangan</small><b id="s-installs">0</b></div>
+    <div class="stat"><small>Total pendapatan</small><b id="s-income">Rp0</b></div>
+  </div>
+  <div class="note">Saldo operasional bukan tabungan. Tabungan hanya yang kamu catat lewat menu Tabungan.</div>
+  <div class="card"><h2>Penghasilan harian (14 hari terakhir)</h2><div class="chartbox"><canvas id="chart-daily"></canvas></div></div>
+  <div class="card"><h2>Penghasilan mingguan (8 minggu)</h2><div class="chartbox"><canvas id="chart-weekly"></canvas></div></div>
+</section>
+
+<!-- INDIHOME -->
+<section class="view" id="view-indihome">
+  <div class="card"><h2 id="i-title">Catat pemasangan IndiHome</h2>
+    <form id="form-indihome">
+      <input type="hidden" id="i-id">
+      <label for="i-date">Tanggal</label><input type="date" id="i-date" required>
+      <div class="row">
+        <div><label for="i-count">Jumlah pemasangan</label><input type="number" id="i-count" min="1" value="1" inputmode="numeric" required></div>
+        <div><label for="i-rate">Komisi per pemasangan (Rp)</label><input type="number" id="i-rate" min="0" value="37000" inputmode="numeric" required></div>
+      </div>
+      <div class="calc"><span>Total komisi</span><span id="i-total">Rp37.000</span></div>
+      <label for="i-notes">Catatan (opsional)</label><input id="i-notes">
+      <button class="btn green" type="submit" id="i-save">Simpan</button>
+      <button class="btn ghost hidden" type="button" id="i-cancel">Batal edit</button>
+    </form>
+  </div>
+  <h3 class="sec">Riwayat IndiHome</h3>
+  <div class="filters"><input class="full" id="i-search" placeholder="Cari catatan..."><input type="date" id="i-from"><input type="date" id="i-to"></div>
+  <div class="card" id="list-indihome"></div>
+</section>
+
+<!-- SHOPEEFOOD -->
+<section class="view" id="view-shopee">
+  <div class="card"><h2 id="sf-title">Catat ShopeeFood</h2>
+    <form id="form-shopee">
+      <input type="hidden" id="sf-id">
+      <label for="sf-date">Tanggal bekerja</label><input type="date" id="sf-date" required>
+      <label for="sf-gross">Pendapatan kotor (Rp)</label><input type="number" id="sf-gross" min="0" value="0" inputmode="numeric" required>
+      <div class="row">
+        <div><label for="sf-fuel">Bensin (Rp)</label><input type="number" id="sf-fuel" min="0" value="0" inputmode="numeric"></div>
+        <div><label for="sf-meal">Makan (Rp)</label><input type="number" id="sf-meal" min="0" value="0" inputmode="numeric"></div>
+      </div>
+      <label for="sf-other">Operasional lainnya (Rp)</label><input type="number" id="sf-other" min="0" value="0" inputmode="numeric">
+      <div class="calc"><span>Pendapatan bersih</span><span id="sf-net">Rp0</span></div>
+      <label for="sf-notes">Catatan (opsional)</label><input id="sf-notes">
+      <button class="btn green" type="submit" id="sf-save">Simpan</button>
+      <button class="btn ghost hidden" type="button" id="sf-cancel">Batal edit</button>
+    </form>
+  </div>
+  <h3 class="sec">Riwayat ShopeeFood</h3>
+  <div class="filters"><input class="full" id="sf-search" placeholder="Cari catatan..."><input type="date" id="sf-from"><input type="date" id="sf-to"></div>
+  <div class="card" id="list-shopee"></div>
+</section>
+
+<!-- PENGELUARAN -->
+<section class="view" id="view-expense">
+  <div class="card"><h2 id="e-title">Catat pengeluaran</h2>
+    <div class="note">Biaya yang sudah dicatat di ShopeeFood tidak perlu dicatat lagi di sini.</div>
+    <form id="form-expense">
+      <input type="hidden" id="e-id">
+      <label for="e-date">Tanggal</label><input type="date" id="e-date" required>
+      <label for="e-cat">Kategori</label>
+      <select id="e-cat">
+        <option value="bensin">Bensin</option><option value="makan_minum">Makan dan minum</option>
+        <option value="kebutuhan_pribadi">Kebutuhan pribadi</option><option value="keperluan_pekerjaan">Keperluan pekerjaan</option>
+        <option value="lain_lain">Lain-lain</option>
+      </select>
+      <label for="e-amount">Jumlah (Rp)</label><input type="number" id="e-amount" min="1" inputmode="numeric" required>
+      <label for="e-notes">Catatan (opsional)</label><input id="e-notes">
+      <button class="btn" type="submit" id="e-save">Simpan</button>
+      <button class="btn ghost hidden" type="button" id="e-cancel">Batal edit</button>
+    </form>
+  </div>
+  <h3 class="sec">Riwayat pengeluaran</h3>
+  <div class="filters">
+    <input class="full" id="e-search" placeholder="Cari catatan...">
+    <input type="date" id="e-from"><input type="date" id="e-to">
+    <select class="full" id="e-catfilter"><option value="">Semua kategori</option>
+      <option value="bensin">Bensin</option><option value="makan_minum">Makan dan minum</option>
+      <option value="kebutuhan_pribadi">Kebutuhan pribadi</option><option value="keperluan_pekerjaan">Keperluan pekerjaan</option>
+      <option value="lain_lain">Lain-lain</option></select>
+  </div>
+  <div class="card" id="list-expense"></div>
+</section>
+
+<!-- TABUNGAN -->
+<section class="view" id="view-saving">
+  <div class="card hero">
+    <small>Terkumpul</small><div class="big" id="sv-total">Rp0</div>
+    <div class="bar"><i id="sv-bar"></i></div>
+    <small><span id="sv-pct">0%</span> · sisa <b id="sv-remain">Rp0</b></small><br>
+    <small>Estimasi tercapai: <b id="sv-eta">-</b></small>
+  </div>
+  <div class="card"><h2 id="sv-title">Catat tabungan</h2>
+    <form id="form-saving">
+      <input type="hidden" id="sv-id">
+      <label for="sv-date">Tanggal</label><input type="date" id="sv-date" required>
+      <label for="sv-type">Jenis</label>
+      <select id="sv-type"><option value="setor">Setor (menambah tabungan)</option><option value="ambil">Ambil (mengurangi tabungan)</option></select>
+      <label for="sv-amount">Jumlah (Rp)</label><input type="number" id="sv-amount" min="1" inputmode="numeric" required>
+      <label for="sv-notes">Catatan (opsional)</label><input id="sv-notes">
+      <button class="btn green" type="submit" id="sv-save">Simpan</button>
+      <button class="btn ghost hidden" type="button" id="sv-cancel">Batal edit</button>
+    </form>
+  </div>
+  <h3 class="sec">Riwayat tabungan</h3>
+  <div class="card" id="list-saving"></div>
+</section>
+
+<!-- TARGET 52 HARI -->
+<section class="view" id="view-target">
+  <div class="card"><h2>Kapan mulai target?</h2>
+    <form id="form-start">
+      <label for="t-start">Tanggal mulai</label><input type="date" id="t-start" required>
+      <div class="btns">
+        <button class="btn" type="submit">Simpan tanggal</button>
+        <button class="btn green" type="button" id="btn-start-today">Mulai hari ini</button>
+      </div>
+    </form>
+    <div class="note" id="t-startinfo" style="margin:12px 0 0"></div>
+  </div>
+  <div class="card hero"><small>Hari ke</small><div class="big"><span id="t-day">0</span> / <span id="t-duration">52</span></div>
+    <div class="bar"><i id="t-bar"></i></div><small id="t-range"></small></div>
+  <div class="grid">
+    <div class="stat"><small>Hari kerja</small><b id="t-workdays">0</b></div>
+    <div class="stat"><small>Hari istirahat</small><b id="t-rest">0</b></div>
+    <div class="stat"><small>Target pemasangan/hari</small><b id="t-dtarget">0</b></div>
+    <div class="stat"><small>Target pemasangan/minggu</small><b id="t-wtarget">0</b></div>
+    <div class="stat"><small>Realisasi pemasangan</small><b id="t-real">0</b></div>
+    <div class="stat"><small>Selisih vs target</small><b id="t-diff">0</b></div>
+    <div class="stat g"><small>Perlu ditabung/minggu</small><b id="t-wsave">Rp0</b></div>
+    <div class="stat g"><small>Perlu ditabung/hari</small><b id="t-dsave">Rp0</b></div>
+  </div>
+  <div class="card"><h2>Tandai hari istirahat / kerja</h2>
+    <form id="form-workday">
+      <div class="row">
+        <div><label for="w-date">Tanggal</label><input type="date" id="w-date" required></div>
+        <div><label for="w-status">Status</label><select id="w-status"><option value="istirahat">Istirahat</option><option value="kerja">Kerja</option></select></div>
+      </div>
+      <button class="btn" type="submit">Simpan status</button>
+    </form>
+    <div class="note" style="margin-top:12px">Hari tanpa tanda dianggap hari kerja.</div>
+    <div id="list-workday"></div>
+  </div>
+</section>
+
+<!-- LAPORAN -->
+<section class="view" id="view-report">
+  <div class="card"><h2>Filter laporan</h2>
+    <div class="row">
+      <div><label for="r-period">Periode</label><select id="r-period"><option value="day">Harian</option><option value="week">Mingguan</option><option value="month">Bulanan</option><option value="total">Total 52 hari</option></select></div>
+      <div><label for="r-source">Jenis</label><select id="r-source"><option value="all">Semua</option><option value="indihome">IndiHome</option><option value="shopeefood">ShopeeFood</option></select></div>
+      <div><label for="r-from">Dari</label><input type="date" id="r-from"></div>
+      <div><label for="r-to">Sampai</label><input type="date" id="r-to"></div>
+    </div>
+    <button class="btn" id="btn-report">Tampilkan</button>
+  </div>
+  <div class="card"><h2>Grafik</h2><div class="chartbox"><canvas id="chart-report"></canvas></div></div>
+  <div class="card"><div class="tablewrap"><table><thead><tr><th>Periode</th><th>Pendapatan</th><th>Biaya</th><th>Pengeluaran</th><th>Bersih</th></tr></thead><tbody id="report-body"></tbody></table></div></div>
+  <button class="btn ghost" id="btn-csv">Unduh laporan (CSV)</button>
+</section>
+
+<!-- MENU -->
+<section class="view" id="view-more">
+  <div class="card menu" style="padding:0;overflow:hidden">
+    <button class="item-btn" data-view="expense">Pengeluaran</button>
+    <button class="item-btn" data-view="target">Target 52 hari</button>
+    <button class="item-btn" data-view="report">Laporan dan ekspor</button>
+    <button class="item-btn" data-view="settings">Pengaturan target</button>
+  </div>
+  <button class="btn red" id="btn-logout">Keluar</button>
+</section>
+
+<!-- PENGATURAN -->
+<section class="view" id="view-settings">
+  <div class="card"><h2>Pengaturan target</h2>
+    <form id="form-settings">
+      <label for="st-target">Target HP (Rp)</label><input type="number" id="st-target" min="1" inputmode="numeric" required>
+      <div class="row">
+        <div><label for="st-start">Tanggal mulai</label><input type="date" id="st-start" required></div>
+        <div><label for="st-duration">Durasi (hari)</label><input type="number" id="st-duration" min="1" max="365" required></div>
+        <div><label for="st-commission">Komisi default (Rp)</label><input type="number" id="st-commission" min="0" required></div>
+        <div><label for="st-rest">Istirahat/minggu</label><input type="number" id="st-rest" min="0" max="6" required></div>
+        <div><label for="st-daily">Target pasang/hari</label><input type="number" id="st-daily" min="0" required></div>
+        <div><label for="st-weekly">Target pasang/minggu</label><input type="number" id="st-weekly" min="0" required></div>
+      </div>
+      <button class="btn green" type="submit">Simpan pengaturan</button>
+    </form>
+  </div>
+</section>
+
+</main>
+
+<nav class="bottom">
+  <button data-view="dashboard" class="active"><span>🏠</span>Beranda</button>
+  <button data-view="indihome"><span>📡</span>IndiHome</button>
+  <button data-view="shopee"><span>🛵</span>ShopeeFood</button>
+  <button data-view="saving"><span>🐷</span>Tabungan</button>
+  <button data-view="more"><span>☰</span>Menu</button>
+</nav>
+</div>
+
+<div id="toast"></div>
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}</script>
+</body>
+</html>
